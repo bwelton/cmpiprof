@@ -1,0 +1,20 @@
+
+CUDA_INCLUDES = @CUDA_INCLUDES@
+SO_OPTS = @SO_OPTS@ -std=c++11 -O4
+PREFIX = ${DESTDIR}@prefix@
+LOCAL_INCLUDES = @BOOST_INCLUDES@ 
+LIBS=@BOOST_LIBS@ -lboost_date_time -ldl
+MPI_INCLUDE =  -I@MPI_INCLUDES@
+
+SOURCE_FILES = cuda_interceptor.c
+
+HEADER_FILES = cuda_interceptor.h
+
+all: interceptor
+	echo "building all"
+
+interceptor:
+	$(CXX) $(SO_OPTS) $(CUDA_INCLUDES) $(MPI_INCLUDE) $(SOURCE_FILES) $(LOCAL_INCLUDES) $(LIBS) -o lib/cuda_interceptor.so 
+
+install: interceptor
+	cp lib/cuda_interceptor.so $(PREFIX)/lib

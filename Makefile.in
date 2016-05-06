@@ -1,0 +1,16 @@
+# /* Copyright Benjamin Welton 2015 */
+
+MAIN_DIR = @MAIN_DIR@
+
+all: interceptor
+	echo "built all"
+
+interceptor:
+	cd $(MAIN_DIR)/cuda_intercept ; \
+	$(MAKE) -f Makefile all ;
+
+install: interceptor_install 
+
+interceptor_install:
+	cd $(MAIN_DIR)/cuda_intercept ; \
+	$(MAKE) -f Makefile install ;
