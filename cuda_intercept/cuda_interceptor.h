@@ -29,8 +29,15 @@ double diffTime(timeval start, timeval end);
 enum AsyncType { KERNEL, MEMCPY };
 struct ActiveTimer;
 
+struct KernelMemCounter {
+	uint64_t total_read;
+	uint64_t total_write;
+	uint64_t changed_read;
+	uint64_t changed_write;
+};
 
 struct PhaseTimers {
+	std::vector<KernelMemCounter> kernel_mem_info;
 	std::vector<std::pair<cudaEvent_t,cudaEvent_t> > gpu_timers;
 	std::vector<std::pair<cudaEvent_t,cudaEvent_t> > memory_timers;
 	size_t mem_transfer_size;
@@ -74,13 +81,6 @@ struct ActiveTimer {
 	AsyncMemcpy * aMemcpy;
 };
 
-struct KernelMemCounter {
-	uint64_t total_read;
-	uint64_t total_write;
-	uint64_t changed_read;
-	uint64_t changed_write;
-};
-
 class PerfStorage {
 public:
 	PerfStorage() {
@@ -107,7 +107,7 @@ public:
 		uni_counter = 0;
 		last_kernelexec = 0;
 		arg_stack.clear();
-		kernel_mem_info.clear();
+		_currentPhase->kernel_mem_info.clear();
 	}
 	~PerfStorage();
 
@@ -157,7 +157,7 @@ private:
 	std::map<void *, size_t > _mem_size;
 	std::vector<void *> arg_stack;
 
-	std::vector<KernelMemCounter> kernel_mem_info;
+
 };
 
 thread_local std::shared_ptr<PerfStorage> PerfStorageDataClass;
@@ -198,7 +198,7 @@ void PerfStorage::ZeroPhase(PhaseTimers * phase){
 
 	phase->gpu_timers.clear();
 	phase->memory_timers.clear();
-
+	phase->kernel_mem_info.clear();
 	phase->mem_transfer_size = 0;
 	phase->mem_alloc_size = 0;
 	phase->mem_alloc_time = 0.0;
@@ -225,22 +225,26 @@ double PerfStorage::TimerTotal(std::vector<std::pair<cudaEvent_t,cudaEvent_t> > 
 		float tmp = 0.0;
 		cudaEventElapsedTime(&tmp, t[x].first, t[x].second);
 		exe_time = exe_time + tmp;
-		if (kernelT == true)
-			LogKernelInfo(tmp);
+		if (kernelT == true){
+			LogKernelInfo(tmp / 1000);
+		}
 	}
 	return double(exe_time / 1000);	
 }
 
+
 void PerfStorage::LogKernelInfo(float elapsed_time) {
 	// Log this kernel entry into the database	
-	if (kernel_mem_info.size() == 0)
+	if (_currentPhase->kernel_mem_info.size() == 0){
+		fprintf(stderr, "%s\n", "We don't have a kernel exectuion");
 		return;
+	}
 	char tmp[1500];
 	snprintf(tmp, 1500, "kernel_exec,TotalTime:%f,TBytesRead:%llu,TBytesWritten:%llu,CBytesRead:%llu,CBytesWritten:%llu",
-			 elapsed_time,kernel_mem_info[0].total_read,kernel_mem_info[0].total_write,kernel_mem_info[0].changed_read, 
-			 kernel_mem_info[0].changed_write );
+			 elapsed_time,_currentPhase->kernel_mem_info[0].total_read,_currentPhase->kernel_mem_info[0].total_write,_currentPhase->kernel_mem_info[0].changed_read, 
+			 _currentPhase->kernel_mem_info[0].changed_write );
 	LogEntry(tmp);
-	kernel_mem_info.erase(kernel_mem_info.begin());
+	_currentPhase->kernel_mem_info.erase(_currentPhase->kernel_mem_info.begin());
 }
 
 void PerfStorage::CheckTimers(bool phase_end){
@@ -257,7 +261,7 @@ void PerfStorage::CheckTimers(bool phase_end){
 
 	DeleteCudaTimers(_currentPhase->gpu_timers);
 	DeleteCudaTimers(_currentPhase->memory_timers);
-
+	_currentPhase->kernel_mem_info.clear();
 	_currentPhase->gpu_timers.clear();
 	_currentPhase->memory_timers.clear();
 	_currentPhase->timer_count = 0;
@@ -367,7 +371,7 @@ void PerfStorage::LaunchedKernel() {
 	loc.total_read = loc.changed_read + read_unchanged;
 
 
-	kernel_mem_info.push_back(loc);
+	_currentPhase->kernel_mem_info.push_back(loc);
 
 	arg_stack.clear();
 	_currentPhase->totalb += totalBytes;

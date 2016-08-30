@@ -413,7 +413,7 @@ cudaError_t cuLaunchKernel(CUfunction f, unsigned int gridDimX, unsigned int gri
 	cudaEventRecord(end);
 
 	PerfStorageDataClass.get()->AddGPUTimer(start,end);
-	
+	//PerfStorageDataClass.get()->LaunchedKernelParams();
 	return ret;		
 }
 }
