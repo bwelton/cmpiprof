@@ -74,13 +74,22 @@ struct ActiveTimer {
 	AsyncMemcpy * aMemcpy;
 };
 
-
+struct KernelMemCounter {
+	uint64_t total_read;
+	uint64_t total_write;
+	uint64_t changed_read;
+	uint64_t changed_write;
+};
 
 class PerfStorage {
 public:
 	PerfStorage() {
+		char hostname2[1024];
+		hostname2[1023] = '\0';
+		gethostname(hostname2, 1023);
 		std::thread::id this_id = std::this_thread::get_id();
 		std::cout << "Creating perf storage for thread " << this_id << "\n";
+		std::cout << "My hostname: " << hostname2 << "\n";   
 		_currentExecution = (KernelExecution *) NULL;
 		_currentPhase = new PhaseTimers[1];
 		ZeroPhase(_currentPhase);
@@ -98,12 +107,13 @@ public:
 		uni_counter = 0;
 		last_kernelexec = 0;
 		arg_stack.clear();
+		kernel_mem_info.clear();
 	}
 	~PerfStorage();
 
 	void LogEntry(char * entry);
 
-	double TimerTotal(std::vector<std::pair<cudaEvent_t,cudaEvent_t> > & t);
+	double TimerTotal(std::vector<std::pair<cudaEvent_t,cudaEvent_t> > & t, bool kernelT);
 	void ZeroPhase(PhaseTimers * phase);
 	void DeleteCudaTimers(std::vector<std::pair<cudaEvent_t,cudaEvent_t> > & t);
 	void CheckTimers(bool phase_end);
@@ -124,6 +134,7 @@ public:
 	void PushArgument(void * mem_loc);
 	void LaunchedKernel();
 	void * FindPtr(void * mem_loc);
+	void LogKernelInfo(float elapsed_time);
 private:
 	std::ofstream outFile;
 	PhaseTimers * _currentPhase;
@@ -145,6 +156,8 @@ private:
 	std::map<void *, std::pair<uint64_t,uint64_t> > _mem_addrs;
 	std::map<void *, size_t > _mem_size;
 	std::vector<void *> arg_stack;
+
+	std::vector<KernelMemCounter> kernel_mem_info;
 };
 
 thread_local std::shared_ptr<PerfStorage> PerfStorageDataClass;
@@ -202,7 +215,7 @@ void PerfStorage::ZeroPhase(PhaseTimers * phase){
 
 }
 
-double PerfStorage::TimerTotal(std::vector<std::pair<cudaEvent_t,cudaEvent_t> > & t){
+double PerfStorage::TimerTotal(std::vector<std::pair<cudaEvent_t,cudaEvent_t> > & t, bool kernelT){
 	// Assumes synchronized device
 	if (CheckThread()==false){
 		fprintf(stderr, "%s\n", "We Have failed the thread check");
@@ -212,8 +225,22 @@ double PerfStorage::TimerTotal(std::vector<std::pair<cudaEvent_t,cudaEvent_t> > 
 		float tmp = 0.0;
 		cudaEventElapsedTime(&tmp, t[x].first, t[x].second);
 		exe_time = exe_time + tmp;
+		if (kernelT == true)
+			LogKernelInfo(tmp);
 	}
 	return double(exe_time / 1000);	
+}
+
+void PerfStorage::LogKernelInfo(float elapsed_time) {
+	// Log this kernel entry into the database	
+	if (kernel_mem_info.size() == 0)
+		return;
+	char tmp[1500];
+	snprintf(tmp, 1500, "kernel_exec,TotalTime:%f,TBytesRead:%llu,TBytesWritten:%llu,CBytesRead:%llu,CBytesWritten:%llu",
+			 elapsed_time,kernel_mem_info[0].total_read,kernel_mem_info[0].total_write,kernel_mem_info[0].changed_read, 
+			 kernel_mem_info[0].changed_write );
+	LogEntry(tmp);
+	kernel_mem_info.erase(kernel_mem_info.begin());
 }
 
 void PerfStorage::CheckTimers(bool phase_end){
@@ -221,8 +248,8 @@ void PerfStorage::CheckTimers(bool phase_end){
 		return;
 	cudaDeviceSynchronize();
 
-	double gpu_timer = TimerTotal(_currentPhase->gpu_timers);
-	double memory_timer = TimerTotal(_currentPhase->memory_timers);
+	double gpu_timer = TimerTotal(_currentPhase->gpu_timers, true);
+	double memory_timer = TimerTotal(_currentPhase->memory_timers, false);
 
 	_currentPhase->mem_transfer_time = _currentPhase->mem_transfer_time + memory_timer;
 	_currentPhase->gpu_exe_time = _currentPhase->gpu_exe_time + gpu_timer;
@@ -310,23 +337,45 @@ void PerfStorage::LaunchedKernel() {
 	size_t readBytes = 0;
 	size_t writeBytes = 0;
 
+	KernelMemCounter loc;
+	uint64_t read_unchanged = 0;
+	uint64_t write_unchanged = 0;
+	loc.total_read = 0;
+	loc.total_write = 0;
+	loc.changed_read = 0;
+	loc.changed_write = 0;
+
 	uni_counter++;
 	for (uint64_t x = 0; x < arg_stack.size(); x++) {
 		if (_mem_size.find(arg_stack[x]) != _mem_size.end()){ 
 			totalBytes += _mem_size[arg_stack[x]];
 			if (_mem_addrs[arg_stack[x]].first > last_kernelexec) {
 				readBytes += _mem_size[arg_stack[x]];
+				loc.changed_read += _mem_size[arg_stack[x]];
+			} else {
+				read_unchanged += _mem_size[arg_stack[x]];
 			}
 			if (_mem_addrs[arg_stack[x]].second > last_kernelexec) {
 				writeBytes += _mem_size[arg_stack[x]];
-			} 
+				loc.changed_write += _mem_size[arg_stack[x]];
+			} else {
+				write_unchanged += _mem_size[arg_stack[x]];
+			}
 		} 
 	}
+	loc.total_write = loc.changed_write + write_unchanged;
+	loc.total_read = loc.changed_read + read_unchanged;
+
+
+	kernel_mem_info.push_back(loc);
+
 	arg_stack.clear();
 	_currentPhase->totalb += totalBytes;
 	_currentPhase->readb += readBytes;
 	_currentPhase->writeb += writeBytes;
 	last_kernelexec = uni_counter;
+
+
 }
 
 
@@ -357,6 +406,7 @@ void PerfStorage::AddMemWrite(void * mem_loc){
 	}
 }
 
+
 void PerfStorage::BeginPhase() {
 	if (_currentPhase->phase_started == true) {
 		EndPhase();
@@ -384,14 +434,17 @@ void PerfStorage::EndPhase() {
 	}
 
 	CheckTimers(true);
-
+	double avg_time = 0.0;
+	if (_currentPhase->gpu_exe_count > 0) {
+		avg_time=_currentPhase->gpu_exe_time / _currentPhase->gpu_exe_count;
+	}
 	char tmp[1500];
 	snprintf(tmp, 1500, "phase_end,TotalTime:%lf,MallocTime:%lf,MallocSize:%llu,GPUTime:%lf,GPUAvg:%lf,MemcpyTime:%lf,MemcpySize:%llu,GTotal:%llu,GRead:%llu,GWrite:%llu",
 			 diffTime(begin_phase, end_phase),
 			 _currentPhase->mem_alloc_time,
 			 _currentPhase->mem_alloc_size,
 			 _currentPhase->gpu_exe_time,
-			 double(_currentPhase->gpu_exe_time / _currentPhase->gpu_exe_count),
+			 avg_time,
 			 _currentPhase->mem_transfer_time,
 			 _currentPhase->mem_transfer_size,
 			 _currentPhase->totalb,
@@ -403,12 +456,16 @@ void PerfStorage::EndPhase() {
 
 void PerfStorage::WritePhasePart() {
 	char tmp[1500];
+	double avg_time = 0.0;
+	if (_currentPhase->gpu_exe_count > 0) {
+		avg_time=_currentPhase->gpu_exe_time / _currentPhase->gpu_exe_count;
+	}
 	snprintf(tmp, 1500, "in_progress,InProgressTotalTime:%lf,MallocTime:%lf,MallocSize:%llu,GPUTime:%lf,GPUAvg:%lf,MemcpyTime:%lf,MemcpySize:%llu,GTotal:%llu,GRead:%llu,GWrite:%llu",
 			 diffTime(begin_phase, end_phase),
 			 _currentPhase->mem_alloc_time,
 			 _currentPhase->mem_alloc_size,
 			 _currentPhase->gpu_exe_time,
-			 double(_currentPhase->gpu_exe_time / _currentPhase->gpu_exe_count),
+			 avg_time,
 			 _currentPhase->mem_transfer_time,
 			 _currentPhase->mem_transfer_size,
 			 _currentPhase->totalb,

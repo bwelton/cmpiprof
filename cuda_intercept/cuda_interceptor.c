@@ -1,6 +1,6 @@
 /* Copyright Benjamin Welton 2015 */
 #include "cuda_interceptor.h"
-#include "mpi.h"
+//#include "mpi.h"
 
 #define __dv(v) = v
 
@@ -496,8 +496,8 @@ extern "C" void __cudaRegisterFunction(void **fatCubinHandle, const char *hostFu
 extern "C" {
 
 // C/C++ MPI Functions
-typedef int (*orig_Cwaitall)(int count, MPI_Request array_of_requests[], MPI_Status array_of_statuses[]);
-int MPI_Waitall(int count, MPI_Request array_of_requests[], MPI_Status array_of_statuses[]) {
+typedef int (*orig_Cwaitall)(int count, void * array_of_requests, void * array_of_statuses);
+int MPI_Waitall(int count, void * array_of_requests, void * array_of_statuses) {
 
 	if (PerfStorageDataClass.get() == NULL) {
 		fprintf(stderr, "%s\n", "Setting up our global data structure");
@@ -518,10 +518,10 @@ int MPI_Waitall(int count, MPI_Request array_of_requests[], MPI_Status array_of_
   	return ret;
 }
 
-typedef int (*orig_Cmpireduce)(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype,
-               MPI_Op op, int root, MPI_Comm comm);
-int MPI_Reduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype,
-               MPI_Op op, int root, MPI_Comm comm) {
+typedef int (*orig_Cmpireduce)(const void *sendbuf, void *recvbuf, int count, int datatype,
+               int op, int root, int comm);
+int MPI_Reduce(const void *sendbuf, void *recvbuf, int count, int datatype,
+               int op, int root, int comm) {
 	if (PerfStorageDataClass.get() == NULL) {
 		fprintf(stderr, "%s\n", "Setting up our global data structure");
 		PerfStorageDataClass.reset(new PerfStorage());
@@ -538,8 +538,8 @@ int MPI_Reduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datat
 }
 
 
-typedef int (*orig_Cmpibar)(MPI_Comm comm);
-int MPI_Barrier(MPI_Comm comm) {
+typedef int (*orig_Cmpibar)(int comm);
+int MPI_Barrier(int comm) {
 	if (PerfStorageDataClass.get() == NULL) {
 		fprintf(stderr, "%s\n", "Setting up our global data structure");
 		PerfStorageDataClass.reset(new PerfStorage());
@@ -561,10 +561,10 @@ int MPI_Barrier(MPI_Comm comm) {
     return ret;
 }
 
-typedef int (*orig_Cmpiallreduce)(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype,
-                  MPI_Op op, MPI_Comm comm);
-int MPI_Allreduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype datatype,
-                  MPI_Op op, MPI_Comm comm) {
+typedef int (*orig_Cmpiallreduce)(const void *sendbuf, void *recvbuf, int count, int datatype,
+                  int op, int comm);
+int MPI_Allreduce(const void *sendbuf, void *recvbuf, int count, int datatype,
+                  int op, int comm) {
 
 	if (PerfStorageDataClass.get() == NULL) {
 		fprintf(stderr, "%s\n", "Setting up our global data structure");
@@ -587,11 +587,11 @@ int MPI_Allreduce(const void *sendbuf, void *recvbuf, int count, MPI_Datatype da
 }
 
 
-typedef int (*orig_Callgather)(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf,
-                  int recvcount, MPI_Datatype recvtype, MPI_Comm comm);
+typedef int (*orig_Callgather)(const void *sendbuf, int sendcount, int sendtype, void *recvbuf,
+                  int recvcount, int recvtype, int comm);
 
-int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype, void *recvbuf,
-                  int recvcount, MPI_Datatype recvtype, MPI_Comm comm) {
+int MPI_Allgather(const void *sendbuf, int sendcount, int sendtype, void *recvbuf,
+                  int recvcount, int recvtype, int comm) {
 	if (PerfStorageDataClass.get() == NULL) {
 		fprintf(stderr, "%s\n", "Setting up our global data structure");
 		PerfStorageDataClass.reset(new PerfStorage());
@@ -818,11 +818,11 @@ void charm_endComputation (){
   	orig_cmal();
 }
 
-typedef void (*orig_allgather)(double * value, int * sendcount, MPI_Datatype * sendtype, double ** recvbuf,
-                  int * recvcount, MPI_Datatype * recvtype, MPI_Comm * comm, int * err);
+typedef void (*orig_allgather)(double * value, int * sendcount, int * sendtype, double ** recvbuf,
+                  int * recvcount, int * recvtype, int * comm, int * err);
 
-void mpi_allgather_(double * value, int * sendcount, MPI_Datatype * sendtype, double ** recvbuf,
-                  int * recvcount, MPI_Datatype * recvtype, MPI_Comm * comm, int * err) {
+void mpi_allgather_(double * value, int * sendcount, int * sendtype, double ** recvbuf,
+                  int * recvcount, int * recvtype, int * comm, int * err) {
 	if (PerfStorageDataClass.get() == NULL) {
 		fprintf(stderr, "%s\n", "Setting up our global data structure");
 		PerfStorageDataClass.reset(new PerfStorage());
