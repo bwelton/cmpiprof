@@ -27,3 +27,6 @@ for x in logFiles:
 ## Run percent imbalanced analysis
 pi = PercentImbalance(data)
 pi.Calculate(join(sys.argv[2], "PercentImbalanced.csv"))
+
+bc = BestCaseRebalancing(data)
+bc.SimpleAverage()

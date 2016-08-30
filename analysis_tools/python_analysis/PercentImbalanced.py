@@ -14,11 +14,11 @@ class PercentImbalance:
             print "ERROR NO INPUT DATA"
 
     def Calculate(self, outFile):
-        phases = importData[0].GetPhases()
+        phases = self._data[0].GetPhases()
         expectedSize = phases.size
         total = np.zeros((expectedSize), dtype=float)
         maxValues = np.zeros((expectedSize), dtype=float)
-        for x in importData:
+        for x in self._data:
             phase = x.GetPhases()
             if phase.size != expectedSize:
                 print "A phase is not of expected size"
@@ -31,20 +31,23 @@ class PercentImbalance:
                     phase = np.concatenate((phases,tmp), axis=1)
             ## Update totals
             total = total + phase["GPUTime"]
-            maxValues = numpy.maximum(phase["GPUTime"], maxValues)
+            maxValues = np.maximum(phase["GPUTime"], maxValues)
 
-        maxValues = maxValues * len(importData)
+        print total
+        print maxValues
+        maxValues = maxValues * len(self._data)
+        np.seterr(divide="warn")
         finalCost = total / maxValues
         f = open(outFile,"wb")
         f.write("Phase,Percent Imbalanced\n")
         count = 1
         for x in finalCost:
-            f.write(str(count) + "," + str(x))
+            f.write(str(count) + "," + str(x) +"\n")
             count += 1
 
         f.close()
 
-        
+
 
 
 
