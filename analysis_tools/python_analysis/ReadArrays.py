@@ -14,7 +14,7 @@ class ImportFile:
         self._rawData = f.read()
         f.close()
         count, headerSize = struct.unpack_from('QQ',self._rawData,0)
-        print "Count: " + str(count) + ",Header Size:" + str(headerSize)
+        #print "Count: " + str(count) + ",Header Size:" + str(headerSize)
         dt = np.dtype([("TotalTime",float,1),
                      ("MallocTime",float,1),
                      ("MallocSize",int,1),
@@ -35,7 +35,7 @@ class ImportFile:
 
     def GetKernels(self):
         return self._kernels
-        
+
 
     def ReadPhases(self, count, headerSize):
         offset = 16
@@ -43,13 +43,13 @@ class ImportFile:
             ttime, mtime, msize, gtime, gavg, mtime, msize, gtot, gread, gwrite, start, end = struct.unpack_from("ddQdddQQQQQQ",self._rawData,offset)
             offset += headerSize
             self._phases[i] = (ttime, mtime, msize, gtime, gavg, mtime, msize, gtot, gread, gwrite)
-            print self._phases[i]
+            #print self._phases[i]
             self.ReadKernels(i, start, end)
 
 
     def ReadKernels(self, phase, start, end):
         kcount = (end - start ) // (8 * 5)
-        print "Phase: " + str(phase) + " has " + str(kcount) + " Kernels"
+        #print "Phase: " + str(phase) + " has " + str(kcount) + " Kernels"
         kdt = np.dtype([("TotalTime",float,1),
                      ("TBytesRead",int,1),
                      ("TBytesWritten",int,1),
@@ -64,8 +64,8 @@ class ImportFile:
             tmps[i] = (ttime, tbytesr, tbytesw, cbytesr, cbytesw)
 
         self._kernels.append(tmps)
-        print tmps
+        #print tmps
 
-trial = sys.argv[1]
-t = ImportFile(trial)
-t.ReadFile()
+# trial = sys.argv[1]
+# t = ImportFile(trial)
+# t.ReadFile()

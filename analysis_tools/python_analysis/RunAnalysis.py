@@ -7,7 +7,7 @@ import numpy as np
 from ReadArrays import ImportFile
 from PercentImbalanced import PercentImbalance
 
-in_dir = sys.argv[1]
+mypath = sys.argv[1]
 allFiles = [join(mypath, f) for f in listdir(mypath) if isfile(join(mypath, f))]
 
 ## Grab only the log files
@@ -19,6 +19,7 @@ for x in allFiles:
 ## Import the data
 data = []
 for x in logFiles:
+    print x
     tmp = ImportFile(x)
     tmp.ReadFile()
     data.append(tmp)
