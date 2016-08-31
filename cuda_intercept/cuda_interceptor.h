@@ -223,6 +223,7 @@ double PerfStorage::TimerTotal(std::vector<std::pair<cudaEvent_t,cudaEvent_t> > 
 	float exe_time = 0.0;
 	for (int x = 0; x < t.size(); x++) {
 		float tmp = 0.0;
+		cudaEventSynchronize(t[x].second);
 		cudaEventElapsedTime(&tmp, t[x].first, t[x].second);
 		exe_time = exe_time + tmp;
 		if (kernelT == true){
