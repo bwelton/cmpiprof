@@ -6,6 +6,7 @@ from os.path import isfile, join
 import numpy as np
 from ReadArrays import ImportFile
 from PercentImbalanced import PercentImbalance
+from BuildBestCase import BestCaseRebalancing
 
 mypath = sys.argv[1]
 allFiles = [join(mypath, f) for f in listdir(mypath) if isfile(join(mypath, f))]

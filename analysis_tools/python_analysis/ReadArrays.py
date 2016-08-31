@@ -31,10 +31,14 @@ class ImportFile:
         self.ReadPhases(count, headerSize)
 
     def GetPhases(self):
-        return self._phases
+        tmp = np.empty_like (self._phases)
+        tmp[:] = self._phases
+        return tmp
 
     def GetKernels(self):
-        return self._kernels
+        tmp = np.empty_like (self._kernels)
+        tmp[:] = self._kernels
+        return tmp
 
 
     def ReadPhases(self, count, headerSize):

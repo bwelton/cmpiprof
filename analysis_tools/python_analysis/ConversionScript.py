@@ -16,3 +16,5 @@ for x in allFiles:
 for x in logFiles:
 	rep = x.split(".")[0] + ".bappdata"
 	os.system("./convertbinary " + x + " " + rep)
+
+os.system("python RunAnalysis.py " + sys.argv[1] + " " + sys.argv[2])

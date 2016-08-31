@@ -27,7 +27,7 @@ class BestCaseRebalancing:
         MaxGPUTimes = np.zeros((expectedSize), dtype=float)
         for x in self._data:
         	GPUTotal = GPUTotal + x.GetPhases()["GPUTime"]
-        	MaxCPUTimes = np.maximum(x.GetPhases()["CPUTime"], MaxCPUTimes)
+        	MaxCPUTimes = np.maximum(x.GetPhases()["TotalTime"], MaxCPUTimes)
         	MaxGPUTimes = np.maximum(x.GetPhases()["GPUTime"], MaxGPUTimes)
 
         GPUTotal = GPUTotal / len(self._data)
@@ -39,4 +39,4 @@ class BestCaseRebalancing:
         	print "Phase Time Saved: " + str(x)
 
         print "Total time savings: " + str(np.sum(timeSaved))
-        print "Percent of time saved: " + str(1 - (np.sum(timeSaved)/np.sum(MaxCPUTimes)))
+        print "Percent of time saved: " + str((np.sum(timeSaved)/np.sum(MaxCPUTimes)) * 100)
