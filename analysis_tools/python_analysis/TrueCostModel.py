@@ -74,13 +74,12 @@ class TrueCostModel:
                 gpuSorted = np.argsort(transferCost)
                 for y in range(0,len(gpuSorted)):
                     ## If the new runtime is less than us with this transfer, perform it.
-                    if transferCost[gpuSorted[y]] + phaseList[sortArray[0]] < phaseList[myPos] and gpuSorted[y] not in migratedList[myPos]:
+                    if transferCost[gpuSorted[y]] + phaseList[sortArray[0]] + GPUKernels["TotalTime"][y] < phaseList[myPos] and gpuSorted[y] not in migratedList[myPos]:
                         #print "Transfering : " + str(myPos) + ":" + str(sortArray[0]) 
                         phaseList[myPos] = phaseList[myPos] - GPUKernels["TotalTime"][y]
-                        phaseList[sortArray[0]] = phaseList[sortArray[0]] + transferCost[gpuSorted[y]]
+                        phaseList[sortArray[0]] = phaseList[sortArray[0]] + transferCost[gpuSorted[y]] + GPUKernels["TotalTime"][y]
                         sortArray = np.argsort(phaseList)
                         migratedList[myPos][gpuSorted[y]] = 1
-
                     else: 
                         break
                 sortArray = np.argsort(phaseList)
