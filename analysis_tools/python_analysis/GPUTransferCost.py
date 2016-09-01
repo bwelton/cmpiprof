@@ -24,15 +24,17 @@ class GPUTransferCost:
             found = False
             for i in range(0,len(self._ref["Size"])):
                 if data[x] < self._ref["Size"][i]:
-                    out[x] = [data[x], data[x] * (self._ref["MemCreate"][i] / self._ref["Size"][i]),
-                              (self._ref["ToGPU"][i] / self._ref["Size"][i]),
-                              (self._ref["FromGPU"][i] / self._ref["Size"][i])]
+                    out["Size"][x] = data[x]
+                    out["MemCreate"][x] = data[x] * (self._ref["MemCreate"][i] / self._ref["Size"][i])
+                    out["ToGPU"][x] = data[x] * (self._ref["ToGPU"][i] / self._ref["Size"][i])
+                    out["FromGPU"][x] = data[x] * (self._ref["FromGPU"][i] / self._ref["Size"][i])
                     found = True
                     break
             if found == False:
-                out[x] = [data[x], data[x] * (self._ref["MemCreate"][-1] / self._ref["Size"][-1]),
-                          data[x] * (self._ref["ToGPU"][-1] / self._ref["Size"][-1]),
-                          data[x] * (self._ref["FromGPU"][-1] / self._ref["Size"][-1])]             
-                print "WE COULD NOT FIND THIS VALUE IN TABLE - Assume larger than 100MB"
+                out["Size"][x] = data[x]
+                out["MemCreate"][x] = data[x] * (self._ref["MemCreate"][-1] / self._ref["Size"][-1])
+                out["ToGPU"][x] = data[x] * (self._ref["ToGPU"][-1] / self._ref["Size"][-1])
+                out["FromGPU"][x] = data[x] * (self._ref["FromGPU"][-1] / self._ref["Size"][-1])       
+                #print "WE COULD NOT FIND THIS VALUE IN TABLE - Assume larger than 100MB"
         return out
 

@@ -7,6 +7,7 @@ import numpy as np
 from ReadArrays import ImportFile
 from PercentImbalanced import PercentImbalance
 from BuildBestCase import BestCaseRebalancing
+from TrueCostModel import TrueCostModel
 
 mypath = sys.argv[1]
 allFiles = [join(mypath, f) for f in listdir(mypath) if isfile(join(mypath, f))]
@@ -31,3 +32,6 @@ pi.Calculate(join(sys.argv[2], "PercentImbalanced.csv"))
 
 bc = BestCaseRebalancing(data)
 bc.SimpleAverage()
+
+tc = TrueCostModel(data)
+tc.CalculateCosts()

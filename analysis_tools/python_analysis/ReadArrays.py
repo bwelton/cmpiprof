@@ -35,9 +35,9 @@ class ImportFile:
         tmp[:] = self._phases
         return tmp
 
-    def GetKernels(self):
-        tmp = np.empty_like (self._kernels)
-        tmp[:] = self._kernels
+    def GetKernels(self,phase):
+        tmp = np.empty_like (self._kernels[phase])
+        tmp[:] = self._kernels[phase]
         return tmp
 
 

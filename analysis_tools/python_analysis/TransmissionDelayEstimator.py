@@ -46,8 +46,14 @@ class TransmissionDelayEstimator:
         pass
 
     def EstimateDelay(self, dataSize):
-        values = (dataSize[:,None] * self._transmissionSpeed) + self._delays
-        return values.astype(self.dt)
+        values = np.zeros((dataSize.size), dtype=self.dt)
+        values["10mbit"] = dataSize * self._transmissionSpeed["10mbit"][0] + self._delays["10mbit"][0]  
+        values["100mbit"] = dataSize * self._transmissionSpeed["100mbit"][0] + self._delays["100mbit"][0]
+        values["1gbit"] = dataSize * self._transmissionSpeed["1gbit"][0] + self._delays["1gbit"][0]
+        values["10gbit"] = dataSize * self._transmissionSpeed["10gbit"][0] + self._delays["10gbit"][0]
+        values["Titan_Nearest"] = dataSize * self._transmissionSpeed["Titan_Nearest"][0] + self._delays["Titan_Nearest"][0]
+        values["Titan_Furthest"] = dataSize * self._transmissionSpeed["Titan_Furthest"][0] + self._delays["Titan_Furthest"][0]
+        return values
 
 
 
