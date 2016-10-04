@@ -165,6 +165,29 @@ cudaError_t cuCtxPopCurrent(void * ctx){
     fprintf(stderr, "We called PopCurrent\n");
     return ret;
 } 
+typedef int (*original_cudaMemcpyAsync)(void *  dst, const void * src, size_t count, 
+                                        enum cudaMemcpyKind kind, cudaStream_t stream);
+cudaError_t cudaMemcpyAsync (void * dst, const void * src, size_t count, 
+                             enum cudaMemcpyKind kind, cudaStream_t stream) {
+    BUILD_STORAGE_CLASS
+
+    original_cudaMemcpyAsync orig_cmal;
+    orig_cmal = (original_cudaMemcpyAsync)dlsym(RTLD_NEXT,"cudaMemcpyAsync");   
+
+    CUDA_MEMORY_TIMERS(cudaError_t ret = (cudaError_t) orig_cmal(dst,src,count,kind,stream);)
+
+    // Call our recorder
+    PerfStorageDataClass.get()->AddMemoryTimer(start, end, count);
+    if (kind == cudaMemcpyHostToDevice) {
+        PerfStorageDataClass.get()->AddMemWrite(dst);
+    } else if (kind == cudaMemcpyDeviceToHost) {
+        PerfStorageDataClass.get()->AddHostMemPtrs((char*)dst);
+        PerfStorageDataClass.get()->AddMemRead((void *)src);
+    }
+
+    return ret;
+}
+
 
 typedef int (*original_cuMemcpyHtoD_v2)(CUdeviceptr dstDevice, const void *srcHost, size_t ByteCount);
 cudaError_t cuMemcpyHtoD_v2(CUdeviceptr dstDevice, const void *srcHost, size_t ByteCount) {
@@ -192,6 +215,7 @@ cudaError_t cuMemcpyDtoH_v2(void *dstHost, CUdeviceptr srcDevice, size_t ByteCou
     CUDA_MEMORY_TIMERS(cudaError_t ret = (cudaError_t) orig_cmal(dstHost, srcDevice, ByteCount);)
 
     PerfStorageDataClass.get()->AddMemoryTimer(start, end, ByteCount);
+    PerfStorageDataClass.get()->AddHostMemPtrs((char*)dstHost);
     PerfStorageDataClass.get()->AddMemRead((void *)srcDevice);
     return ret;
 }
@@ -210,6 +234,7 @@ cudaError_t cudaMemcpy(void *dst, const void *src, size_t count, enum cudaMemcpy
     if (kind == cudaMemcpyHostToDevice) {
         PerfStorageDataClass.get()->AddMemWrite(dst);
     } else if (kind == cudaMemcpyDeviceToHost) {
+        PerfStorageDataClass.get()->AddHostMemPtrs((char*)dst);
         PerfStorageDataClass.get()->AddMemRead((void *)src);
     }
     return ret;
@@ -297,6 +322,7 @@ cudaError_t cudaConfigureCall(dim3 gridDim, dim3 blockDim, size_t sharedMem, cud
 
 }
 
+
 typedef int (*original_cuLaunchKernel)(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, unsigned int blockDimY, unsigned int blockDimZ, 
                                        unsigned int sharedMemBytes, CUstream hStream, void **kernelParams, void **extra);
 cudaError_t cuLaunchKernel(CUfunction f, unsigned int gridDimX, unsigned int gridDimY, unsigned int gridDimZ, unsigned int blockDimX, 
@@ -349,27 +375,6 @@ cudaError_t cudaLaunch(const void *func) {
     return ret;     
 }
 
-typedef int (*original_cudaMemcpyAsync)(void *  dst, const void * src, size_t count, 
-                                        enum cudaMemcpyKind kind, cudaStream_t stream);
-cudaError_t cudaMemcpyAsync (void * dst, const void * src, size_t count, 
-                             enum cudaMemcpyKind kind, cudaStream_t stream) {
-    BUILD_STORAGE_CLASS
-
-    original_cudaMemcpyAsync orig_cmal;
-    orig_cmal = (original_cudaMemcpyAsync)dlsym(RTLD_NEXT,"cudaMemcpyAsync");   
-
-    CUDA_MEMORY_TIMERS(cudaError_t ret = (cudaError_t) orig_cmal(dst,src,count,kind,stream);)
-
-    // Call our recorder
-    PerfStorageDataClass.get()->AddMemoryTimer(start, end, count);
-    if (kind == cudaMemcpyHostToDevice) {
-        PerfStorageDataClass.get()->AddMemWrite(dst);
-    } else if (kind == cudaMemcpyDeviceToHost) {
-        PerfStorageDataClass.get()->AddMemRead((void *)src);
-    }
-
-    return ret;
-}
 
 typedef void (*original_funcreg)(void **fatCubinHandle, const char *hostFun, char *deviceFun,
                             const char *deviceName, int thread_limit, uint3 *tid, uint3 *bid,

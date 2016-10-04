@@ -176,6 +176,8 @@ public:
 	void StartTimer(int id);
 	void EndTimer(int id);
 	void FinishTimer(int id, char * type);
+	void AddHostMemPtrs(char * ptr);
+	void CheckSend(char * ptr, char * source, size_t size);
 	int callbacksRegistered;
 private:
 
@@ -202,6 +204,9 @@ private:
 	double _time_waiting;
 	std::map<int, double> _currentTime; 
 	std::map<int, struct timeval> _runningStartTime;
+
+	std::set<char*> _host_mem_ptrs;
+
 	//boost::timer::cpu_timer _idle_timer;
 };
 

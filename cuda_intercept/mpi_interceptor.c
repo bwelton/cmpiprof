@@ -1,6 +1,6 @@
 /* Copyright Benjamin Welton 2016 */
 #include "cuda_interceptor.h"
-
+extern "C" {
 // C/C++ MPI Functions
 typedef int (*orig_Cwaitall)(int count, void * array_of_requests, void * array_of_statuses);
 int MPI_Waitall(int count, void * array_of_requests, void * array_of_statuses) {
@@ -22,7 +22,7 @@ typedef int (*orig_Cmpireduce)(const void *sendbuf, void *recvbuf, int count, in
 int MPI_Reduce(const void *sendbuf, void *recvbuf, int count, int datatype,
                int op, int root, int comm) {
 	BUILD_STORAGE_CLASS
-
+    PerfStorageDataClass.get()->CheckSend((char*)sendbuf, "REDUCE", size_t(count));
 
   	orig_Cmpireduce orig_cmal;
   	orig_cmal = (orig_Cmpireduce)dlsym(RTLD_NEXT,"MPI_Reduce");
@@ -52,12 +52,14 @@ int MPI_Allreduce(const void *sendbuf, void *recvbuf, int count, int datatype,
                   int op, int comm) {
 
 	BUILD_STORAGE_CLASS
+  PerfStorageDataClass.get()->CheckSend((char*)sendbuf, "ALL_REDUCE", size_t(count));
 
 	PerfStorageDataClass.get()->EndPhase();
 	// fprintf(stderr, "%s\n", "Inside MPIAllReduce");
   	orig_Cmpiallreduce orig_cmal;
   	orig_cmal = (orig_Cmpiallreduce)dlsym(RTLD_NEXT,"MPI_Allreduce");
   	int ret = orig_cmal( sendbuf,  recvbuf,  count,  datatype,  op,  comm);
+
 
   	PerfStorageDataClass.get()->BeginPhase();
 
@@ -72,7 +74,7 @@ int MPI_Allgather(const void *sendbuf, int sendcount, int sendtype, void *recvbu
                   int recvcount, int recvtype, int comm) {
 	BUILD_STORAGE_CLASS
 
-
+  PerfStorageDataClass.get()->CheckSend((char*)sendbuf, "ALL_GATHER", size_t(sendcount));
 	PerfStorageDataClass.get()->EndPhase();
 
   	orig_Callgather orig_cmal;
@@ -111,7 +113,7 @@ void mpi_reduce_(void * p1, void * p2, void * p3, void * p4, void * p5,
 	void * p6, void * p7, void * p8) {
 	BUILD_STORAGE_CLASS
 
-
+  
 	// fprintf(stderr, "%s\n", "Inside MPIReduce");
   	orig_mpireduce orig_cmal;
   	orig_cmal = (orig_mpireduce)dlsym(RTLD_NEXT,"mpi_reduce_");
@@ -165,4 +167,5 @@ void mpi_allgather_(double * value, int * sendcount, int * sendtype, double ** r
     orig_cmal(value, sendcount, sendtype, recvbuf, recvcount, recvtype, comm, err);
 
     PerfStorageDataClass.get()->BeginPhase();
+}
 }

@@ -1,6 +1,19 @@
 #include "cuda_interceptor.h"
 thread_local std::shared_ptr<PerfStorage> PerfStorageDataClass;
 
+void PerfStorage::AddHostMemPtrs(char * ptr) {
+	if (_host_mem_ptrs.find(ptr) != _host_mem_ptrs.end())
+		_host_mem_ptrs.insert(ptr);
+}
+
+void PerfStorage::CheckSend(char * ptr, char * source, size_t size) {
+	if (_host_mem_ptrs.find(ptr) != _host_mem_ptrs.end()) {
+		char tmp[1500];
+		snprintf(tmp, 1500, "cuda_send,function:%s,size:%llu",source, size);
+		LogEntry(tmp);
+	}
+}
+
 void PerfStorage::StartTimer(int id) {
 	struct timeval cur_time;
 	gettimeofday(&cur_time, NULL);
@@ -106,7 +119,7 @@ void PerfStorage::DeleteCudaTimers(std::vector<std::pair<cudaEvent_t,cudaEvent_t
 void PerfStorage::ZeroPhase(PhaseTimers * phase){
 	DeleteCudaTimers(phase->gpu_timers);
 	DeleteCudaTimers(phase->memory_timers);
-
+	_host_mem_ptrs.clear();
 	phase->gpu_timers.clear();
 	phase->memory_timers.clear();
 	phase->kernel_mem_info.clear();
