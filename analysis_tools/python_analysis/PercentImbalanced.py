@@ -15,9 +15,10 @@ class PercentImbalance:
 
     def Calculate(self, outFile):
         phases = self._data[0].GetPhases()
+        print len(phases)
         expectedSize = phases.size
         total = np.zeros((expectedSize), dtype=float)
-        maxValues = np.zeros((expectedSize), dtype=float)
+        maxValues = np.zeros((expectedSize), dtype=float)      
         for x in self._data:
             phase = x.GetPhases()
             if phase.size != expectedSize:
@@ -27,9 +28,13 @@ class PercentImbalance:
                     phase = np.split(phase,[expectedSize,phase.size - expectedSize])[0]
                 elif phase.size < expectedSize:
                     print "Expanding phase size"
-                    tmp = np.zeros((expectedSize-phase.size), dtype=phase.dtype)
-                    phase = np.concatenate((phases,tmp), axis=1)
+                    tmp = np.zeros((expectedSize-phase.size), dtype=phases.dtype)
+                    phase = np.concatenate((phase,tmp), axis=1)
+                    print phase
+            x.FixPhase(expectedSize)
             ## Update totals
+            print len(total)
+            print len(phase["GPUTime"])
             total = total + phase["GPUTime"]
             maxValues = np.maximum(phase["GPUTime"], maxValues)
 
